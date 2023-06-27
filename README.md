@@ -19,3 +19,14 @@ This project is still heavily WIP, especially the transformer model is still und
 - Optionally, select 'Remove misspelled words' if you want to only allow valid English sentences (Warning: This will remove any sentences containing names, as they are not in the English dictionary)
 - Select the number of documents to load if you have a really large dataset (0 will load all documents)
 - Press 'Process Training Data', this will clean and tokenize all the documents and create word embeddings with positional encodings
+
+# How to run the 'Generate Text' section
+As long as the transformer model is under construction, this section only allows interacting with word embedding model.
+
+- Perform all the steps of the 'Process Training Data' section
+- Enter a word in the query field
+- Press 'Generate Text' which will show the 10 most similar words to the one you entered based on the training data
+  
+- Enter a full sentence or text
+- Set the temperature selector to 0.0
+- Press 'Generate Text' which will generate an alternate text by replacing almost every word with the one most similar to it
