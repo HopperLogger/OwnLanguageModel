@@ -21,12 +21,12 @@ class GenerateText(QThread):
         self.sendLogMessage.emit("", "")
 
         # --- Load the word2vec model ---
-        if not os.path.exists('/ProcessedData/word2vec_model'):
+        if not os.path.exists('/ProcessedData/word2vec-model'):
             self.sendLogMessage.emit("Model not found. Please train the model first.", "red")
             return
         else:
             # Load the word2vec model
-            model = Word2Vec.load('/ProcessedData/word2vec_model')
+            model = Word2Vec.load('/ProcessedData/word2vec-model')
             self.sendLogMessage.emit("Model loaded.", "green")
             self.increaseProgressBar.emit(3)
 
