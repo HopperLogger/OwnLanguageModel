@@ -32,9 +32,9 @@ Most importantly though, I find immense joy and fulfillment in this project. As 
 - Select the number of documents to load if you have a really large dataset (0 will load all documents)
 - Press 'Process Training Data', this will clean and tokenize all the documents and create word embeddings with positional encodings
 
-## How to train the model
+## How to train the model (still WIP)
 - Select the desired training parameters
-- Select wheter to use the gpu for training or not (this requires a NVIDIA GPU with plenty of VRAM and CUDA 11.8 to be installed)
+- Select wheter to use the GPU for training or not (this requires a NVIDIA GPU with plenty of VRAM and CUDA 11.8 to be installed)
 - Press 'Train model' which will start the training process (depending on the size of the training data this might take a long time)
 
 ## How to generate text
