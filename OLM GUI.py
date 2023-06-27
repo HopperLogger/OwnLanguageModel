@@ -6,11 +6,11 @@ from PyQt6.QtGui import *
 from PyQt6.QtCore import *
 
 try:
-    from dependencies import ProcessTrainingData
-    from dependencies import TrainModel
-    from dependencies import GenerateText
+    import ProcessTrainingData
+    import TrainModel
+    import GenerateText
 except:
-    print('ERROR: Not all dependencies are present. Please make sure that the dependencies folder is in the same directory as the executable.')
+    print('ERROR: Not all dependencies are present!')
 
 # -------------------------- Create the main window -----------------------------------
 class MainWindow(QWidget):
@@ -437,7 +437,6 @@ class MainWindow(QWidget):
         #self.setWindowFlags(Qt.WindowStaysOnTopHint)
         self.setGeometry(400, 100, 1000, 600)
         self.setWindowTitle('Own Language Model GUI')
-        self.setWindowIcon(QIcon(f'{os.getcwd()}/dependencies/olmicon.png'))
         self.darkMode()
 
     # ----------------------- WINDOW FUNCTIONS ------------------------------------------
@@ -698,12 +697,8 @@ if __name__ == '__main__':
     # Clear the terminal
     os.system('cls' if os.name=='nt' else 'clear')
 
-    # Check if all the dependencies are present
-    if not os.path.exists(os.getcwd() + '/dependencies/olmicon.png'):
-        print("ERROR: Not all dependencies are present. Please make sure that the dependencies folder is in the same directory as the executable.")
-    else:
-        # Create the application and the main window
-        app = QApplication(sys.argv)
-        main_window = MainWindow()
-        main_window.show()
-        sys.exit(app.exec())
+    # Create the application and the main window
+    app = QApplication(sys.argv)
+    main_window = MainWindow()
+    main_window.show()
+    sys.exit(app.exec())
