@@ -34,7 +34,7 @@ Most importantly though, I find immense joy and fulfillment in this project. As 
 
 ## How to train the model (still WIP)
 - Select the desired training parameters
-- Select wheter to use the GPU for training or not (this requires a NVIDIA GPU with plenty of VRAM and CUDA 11.8 to be installed)
+- Select whether to use the GPU for training or not (this requires a NVIDIA GPU with plenty of VRAM and CUDA 11.8 to be installed)
 - Press 'Train model' which will start the training process (depending on the size of the training data this might take a long time)
 
 ## How to generate text
