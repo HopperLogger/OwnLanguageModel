@@ -1,9 +1,9 @@
 import json
 import sys
 import os
-from PyQt6.QtWidgets import *
-from PyQt6.QtGui import *
-from PyQt6.QtCore import *
+from PyQt6.QtWidgets import QWidget, QApplication, QLabel, QPushButton, QCheckBox, QProgressBar, QFileDialog, QSpinBox, QFrame, QHBoxLayout, QVBoxLayout, QLineEdit, QDoubleSpinBox, QTextEdit
+from PyQt6.QtGui import QFont, QPalette, QColor, QIcon
+from PyQt6.QtCore import Qt
 
 try:
     import ProcessTrainingData
@@ -12,7 +12,6 @@ try:
 except:
     print('ERROR: Not all dependencies are present!')
 
-# -------------------------- Create the main window -----------------------------------
 class MainWindow(QWidget):
 
     # Parameters of the GUI
@@ -59,12 +58,11 @@ class MainWindow(QWidget):
         self.process_training_data_thread = None
         self.train_model_thread = None
         self.generate_text_thread = None
-        # ----------------------- TRAINING SECTION --------------------------------------------
-        # Create the training section label
-        self.training_section_label = QLabel("Training:")
-        self.training_section_label.setFont(self.big_font)
-
-        # ----------------------- PATHS SECTION --------------------------------------------
+        # ----------------------- PROCESSING SECTION --------------------------------------------
+        # Create the processing section label
+        self.processing_section_label = QLabel("Processing:")
+        self.processing_section_label.setFont(self.big_font)
+        
         # Create the paths section label
         self.paths_section_label = QLabel("Paths:")
         self.paths_section_label.setFont(self.font)
@@ -86,11 +84,6 @@ class MainWindow(QWidget):
         hbox_file_browse = QHBoxLayout()
         hbox_file_browse.addWidget(self.selected_file_label)
         hbox_file_browse.addWidget(self.file_browse_button)
-
-        # ----------------------- PROCESSING SECTION --------------------------------------------
-        # Create the processing section label
-        self.processing_section_label = QLabel("Processing:")
-        self.processing_section_label.setFont(self.font)
 
         # Create the checkbox for loading the story dump
         self.load_story_dump_cb = QCheckBox("Load story dump")
@@ -141,7 +134,7 @@ class MainWindow(QWidget):
         # ----------------------- TRAINING SECTION --------------------------------------------
         # Create the training section label
         self.training_section_label2 = QLabel("Training:")
-        self.training_section_label2.setFont(self.font)
+        self.training_section_label2.setFont(self.big_font)
         # Create the epoch selector
         self.num_epochs_selector = QSpinBox()
         self.num_epochs_selector.setFixedSize(300, 30)
@@ -294,7 +287,7 @@ class MainWindow(QWidget):
 
         # Create the layout for the processing and training section
         vbox_left = QVBoxLayout()
-        vbox_left.addWidget(self.training_section_label)
+        vbox_left.addWidget(self.processing_section_label)
         vbox_left.addWidget(self.paths_section_label)
         vbox_left.addLayout(hbox_folder_browse)
         vbox_left.addLayout(hbox_file_browse)
