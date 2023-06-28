@@ -50,13 +50,18 @@ class TrainModel(QThread):
         return arr
 
     def run(self):
+        self.sendLogMessage.emit('Loading training data...', 'yellow')
         training_data = self.loadDataChunks('attention-training-data-vecs')
+        self.sendLogMessage.emit('Loaded training data.', 'green')
+        self.sendLogMessage.emit('Creating training data tensor...', 'yellow')
         #training_data = [[np.array([0.5,1,0.43,0.1,0.2]),np.array([0.2,0.1,0.43,0.4,0.33]),np.array([0.6,1,0.46,0.7,0.9])],[np.array([0.3,1,0.41,0.09,0.33]),np.array([0.45,1,0.4,0.1,0.76]),np.array([0.21,1,0.33,0.45,0.66])]]
         training_data = pad_sequence([torch.tensor(sentence) for sentence in training_data], batch_first=True, padding_value=0)
-        training_data_tensor = torch.tensor(training_data, dtype=torch.float32, device='cuda' if self.gpu_enable else 'cpu') # Convert the training data to a tensor
+        #training_data_tensor = torch.tensor(training_data, dtype=torch.float32, device='cuda' if self.gpu_enable else 'cpu') # Convert the training data to a tensor
+        training_data_tensor = training_data.clone().detach().to(dtype=torch.float32, device='cuda' if self.gpu_enable else 'cpu')
         training_data_dataset = TensorDataset(training_data_tensor) # Create a TensorDataset from the training data tensor
         training_data_dataloader = DataLoader(training_data_dataset, batch_size=self.batch_size, shuffle=True) # Create a DataLoader to handle batching and shuffling
-
+        self.sendLogMessage.emit('Created training data tensor.', 'green')
+        
         class TransformerModel(nn.Module):
             def __init__(self, input_dim, hidden_dim, num_heads, num_layers):
                 super(TransformerModel, self).__init__()
@@ -157,7 +162,7 @@ class TrainModel(QThread):
         # Instantiate your language model
         model = TransformerModel(input_dim=100, hidden_dim=10, num_heads=1, num_layers=1)
 
-        loss_fn = nn.CrossEntropyLoss() # Defining the loss function
+        loss_fn = nn.MSELoss() # Defining the loss function
         optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate) # Defining the optimizer
 
         # Create the targets
@@ -166,7 +171,7 @@ class TrainModel(QThread):
         target_data_dataloader = DataLoader(target_data_dataset, batch_size=self.batch_size, shuffle=True) # Create a DataLoader to handle batching and shuffling
 
         # Training loop
-        self.sendLogMessage.emit("Training model...", "Yellow")
+        self.sendLogMessage.emit("Training model...", "yellow")
         for epoch in range(self.epochs):
             for batch, target_batch in zip(training_data_dataloader, target_data_dataloader):
                 # Clear accumulated gradients
@@ -189,4 +194,4 @@ class TrainModel(QThread):
                 optimizer.step()
 
             # Print the loss after each epoch
-            self.sendLogMessage.emit(f"Epoch {epoch+1}/{self.epochs}, Loss: {loss.item():.4f}", "Blue")
+            self.sendLogMessage.emit(f"Epoch {epoch+1}/{self.epochs}, Loss: {loss.item():.4f}", "blue")
