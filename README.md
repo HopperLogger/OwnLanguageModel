@@ -34,6 +34,8 @@ Most importantly though, I find immense joy and fulfillment in this project. As 
 - Download and extract the repository
 - Run 'OLM GUI.py'
 
+<img src="https://github.com/HopperLogger/OwnLanguageModel/assets/121826818/cb0c6e9d-ac4d-4640-a6b5-500a9c73e014" alt="GUI" width="500">
+
 ## How to process your training data
 - Prepare a folder with your training data which contains .docx, .txt, and/or a .json dump called 'story-dump.json'
 - Select your training data folder and check 'Load story dump' if you have a .json dump in your training folder
