@@ -35,23 +35,15 @@ class TrainModel(QThread):
         """
         num_files = len([name for name in os.listdir(f'{os.getcwd()}/ProcessedData') if name.startswith(file_name)])
         arr = []
-        if os.path.exists(f'{os.getcwd()}/ProcessedData/{file_name}-0.json'):
-            for i in range(0, num_files):
-                with open(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.json', 'r') as file:
-                    chunk = json.load(file)
-                    arr.extend(chunk)
-        elif os.path.exists(f'{os.getcwd()}/ProcessedData/{file_name}-0.npz'):
-            for i in range(0, num_files):
-                chunk = np.load(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz')
-                arr += list(chunk.values())
-        else:
-            raise Exception("File does not exist.")
+        for i in range(0, num_files):
+            chunk = np.load(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz')
+            arr += list(chunk.values())
         
         return arr
 
     def run(self):
         self.sendLogMessage.emit('Loading training data...', 'yellow')
-        training_data = self.loadDataChunks('attention-training-data-vecs')
+        training_data = self.loadDataChunks('pos-encoded-training-data')
         self.sendLogMessage.emit('Loaded training data.', 'green')
         self.sendLogMessage.emit('Creating training data tensor...', 'yellow')
         #training_data = [[np.array([0.5,1,0.43,0.1,0.2]),np.array([0.2,0.1,0.43,0.4,0.33]),np.array([0.6,1,0.46,0.7,0.9])],[np.array([0.3,1,0.41,0.09,0.33]),np.array([0.45,1,0.4,0.1,0.76]),np.array([0.21,1,0.33,0.45,0.66])]]
