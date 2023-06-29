@@ -37,7 +37,7 @@ class ProcessTrainingData(QThread):
         Returns:\n
             None
         """
-        num_files = int(len(arr) // chunk_size) + 1
+        num_files = len(arr) // chunk_size + 1
         if type == "json":
             for i in range(0, num_files):
                 chunk = arr[chunk_size*i:chunk_size*(i+1)]
@@ -49,11 +49,11 @@ class ProcessTrainingData(QThread):
                 training_data = {}
                 for j in range(0, len(chunk)):
                     training_data[f'sentence{j}'] = chunk[j]
-                np.savez_compressed(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz', **training_data)
+                np.savez(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz', **training_data)
         else:
             raise Exception("Invalid type. Must be either 'json' or 'numpy'.")
             
-    def loadDataChunks(self, file_name: str) -> list:
+    def loadDataChunks(self, file_name: str, i: int) -> list:
         """
         Loads data in chunks from the ProcessedData folder.
 
@@ -71,13 +71,13 @@ class ProcessTrainingData(QThread):
                     chunk = json.load(file)
                     arr.extend(chunk)
         elif os.path.exists(f'{os.getcwd()}/ProcessedData/{file_name}-0.npz'):
-            for i in range(0, num_files):
-                chunk = np.load(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz')
-                arr += list(chunk.values())
+            if i < 10000:
+                chunk = np.load(f'{os.getcwd()}/ProcessedData/{file_name}-{0}.npz')
+                sentence = chunk[f'sentence{i}']
         else:
             raise Exception("File does not exist.")
         
-        return arr
+        return sentence
 
     def loadTrainingData(self, training_folder: str, num_documents_to_load: int = 0, load_dump: bool = True, check_spelling: bool = False) -> list:
         """
@@ -91,6 +91,7 @@ class ProcessTrainingData(QThread):
         
         Returns:\n
             list: A list of all the cleaned sentences from the training data.
+            -> [["Hello","world"],["This","is","the","second","sentence"]]
         """
         self.sendLogMessage.emit("Loading the training data...", "yellow")
         
@@ -242,7 +243,7 @@ class ProcessTrainingData(QThread):
         with open(f'{os.getcwd()}/ProcessedData/training-data-stats.json', 'w') as f:
             json.dump(num_total_documents, f)
 
-        self.sendLogMessage.emit(f"Sucessfully saved {'{:,}'.format(num_words)} new valid words of training data! Here are a few:", "green")
+        self.sendLogMessage.emit(f"Sucessfully saved {'{:,}'.format(num_words)} valid words of training data! Here are a few:", "green")
         random_words = ""
         for i in range(20):
             sentence = random.choice(valid_training_sentences)
@@ -250,9 +251,14 @@ class ProcessTrainingData(QThread):
             random_words += word + " - "
         random_words = random_words[:-2]
         self.sendLogMessage.emit(f"{random_words}", "blue")
-        self.increaseProgressBar.emit(2)
+        self.increaseProgressBar.emit(3)
         self.updateStats.emit("training-data")
 
+        # Save the valid training sentences
+        with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'w') as file:
+            json.dump(valid_training_sentences, file)
+        self.sendLogMessage.emit("Saved the training data.", "green")
+            
         return valid_training_sentences
 
     def createWord2VecModel(self, train_data: list, epochs: int = 30) -> Word2Vec:
@@ -280,7 +286,7 @@ class ProcessTrainingData(QThread):
             os.makedirs(f'{os.getcwd()}/ProcessedData')
 
         trained_epochs = 1
-        pr = 75 / (epochs-1)
+        pr = 30 / (epochs-1)
         for epoch in range(epochs-1):
             start_time = time.time()
             model.train(train_data, total_examples=model.corpus_count, epochs=1)
@@ -301,8 +307,7 @@ class ProcessTrainingData(QThread):
             time_in_sec = int(elapsed_time)
             eta = round((((epochs - epoch)*time_in_sec)/60),1)
             self.sendLogMessage.emit(f"Step {trained_epochs} --- Took {time_in_sec}s --- ETA {eta} min(s).", "blue")
-        self.sendLogMessage.emit("Word2Vec model sucessfully trained.", "green")
-        self.increaseProgressBar.emit(1)
+        self.sendLogMessage.emit("Word2Vec model sucessfully trained and saved.", "green")
         self.updateStats.emit("model")
 
         return model
@@ -318,8 +323,9 @@ class ProcessTrainingData(QThread):
 
         Returns:\n
             pos_encoded_train_data (list): The training data with the positional encodings added to each word embedding.
+            -> [[np.array,np.array,np.array],[np.array,np.array]]
         """
-        self.sendLogMessage.emit("Generating positional encodings...", "blue")
+        self.sendLogMessage.emit("Generating positional encodings...", "yellow")
         # Generate positional encodings for each position in the sequence
         embedding_size = model.vector_size
         pos_encodings = np.zeros((max_seq_len, embedding_size)) # Create a 100x100 matrix
@@ -333,8 +339,12 @@ class ProcessTrainingData(QThread):
         # Add the positional encodings to each sentence array
         pos_encoded_train_data = []
         num_sentences = len(train_data)
+        pr = 40 / num_sentences
         for sentence in train_data:
-            print(f"Generating positional encodings for sentence {train_data.index(sentence)+1}/{num_sentences}")
+            current_sentence_idx = train_data.index(sentence)+1
+            print(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}")
+            if (current_sentence_idx % 100 == 0):
+                self.increaseProgressBar.emit(pr*100)
             sentence_embeddings = []
             for i, word in enumerate(sentence):
                 # Get the word vector before positional encoding
@@ -351,37 +361,20 @@ class ProcessTrainingData(QThread):
             # Add the pos-encoded sentence to the pos_encoded_train_data list
             pos_encoded_sentence = np.array(sentence_embeddings[:sentence_length])
             pos_encoded_train_data.append(pos_encoded_sentence)
-
-        return pos_encoded_train_data
-    
-    def computeSelfAttention(self, train_data_vecs: list) -> list:
-        """
-        Computes the self-attention for each word in the training data.
-
-        Parameters:\n
-            train_data_vecs (list): The training data with the positional encodings added to each word embedding.
             
-        Returns:\n
-            new_train_data_vecs (list): The training data with the self-attention added to each word embedding.
-        """
-        new_train_data_vecs = []
-        for sentence in train_data_vecs:
-            new_word_vecs = []
-            for word_vec in sentence:
-                weights = [word_vec.dot(vec) for vec in sentence]
-                normalized_weights = [(weight - min(weights)) / (max(weights) - min(weights)) for weight in weights]
-                new_word = sum(weight * vec for weight, vec in zip(normalized_weights, sentence))
-                new_word_vecs.append(new_word)
-            new_train_data_vecs.append(new_word_vecs)
-        return new_train_data_vecs
+        # Save the pos-encoded training data
+        self.sendLogMessage.emit("Saving pos encoded training data vectors...", "yellow")
+        self.saveDataChunks(pos_encoded_train_data, chunk_size=100000, type="numpy", file_name="pos-encoded-training-data")
+        self.sendLogMessage.emit(f"Saved pos encoded training data vectors.", "green")
+        
+        return pos_encoded_train_data
 
     def run(self) -> None:
         """
         Main function of the thread.
-        Prepares the training data, 
+        Cleans the training data, 
         trains the Word2Vec model, 
-        generates the positional encodings 
-        and computes the self-attention.
+        and generates the positional encodings.
 
         Parameters:\n
             None
@@ -428,24 +421,51 @@ class ProcessTrainingData(QThread):
                 self.sendLogMessage.emit("Processing aborted.", "red")
                 return
 
+        # --- TODO logic ---
+        # Check if the TODO list exists
+        if os.path.exists(f'{os.getcwd()}/ProcessedData/todo.json') and not messagebox.askyesno("Confirmation", "The previous processing was aborted, do you want to continue it?"):
+            # Delete the TODO list
+            os.remove(f'{os.getcwd()}/ProcessedData/todo.json')
+        
+        # Create the TODO list
+        if not os.path.exists(f'{os.getcwd()}/ProcessedData/todo.json'):
+            with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
+                json.dump([0,0,0], file)
+                    
+        # Open the TODO list
+        with open(f'{os.getcwd()}/ProcessedData/todo.json', 'r') as file:
+            todo_list = json.load(file)
+            
         # --- Main functions ---
-        if True:
-            # Preprocess the training data
+        # --- Preprocess the training data ---
+        if not todo_list[0]:
             train_data = self.loadTrainingData(self.training_folder, self.num_documents_to_load, self.load_dump, self.check_spelling)
-            self.saveDataChunks(train_data, chunk_size=100000, type="json", file_name="training-data")
-            self.sendLogMessage.emit("Saved training data.", "green")
+            # Save the current progress in the TODO list
+            with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
+                json.dump([1,0,0], file)
 
-            # Train the word2vec model
+        # --- Train the word2vec model ---
+        if not todo_list[1]:
+            # Load the training data
+            if train_data == None:
+                with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
+                    train_data = json.load(file)
             word2vec_model = self.createWord2VecModel(train_data, self.epochs)
-            self.sendLogMessage.emit("Saved Word2Vec model.", "green")
+            # Save the current progress in the TODO list
+            with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
+                json.dump([1,1,0], file)
 
-            # Pos encode the training data
-            pos_encoded_train_data_vecs = self.getPosEncodings(word2vec_model, train_data, max_seq_len=100)
-            self.saveDataChunks(pos_encoded_train_data_vecs, chunk_size=100000, type="numpy", file_name="pos-encoded-training-data-vecs")
-            self.sendLogMessage.emit(f"Saved pos encoded training data vectors.", "green")
-
-            # Compute the self attention
-            attention_train_data_vecs = self.computeSelfAttention(pos_encoded_train_data_vecs)
-            self.saveDataChunks(attention_train_data_vecs, chunk_size=100000, type="numpy", file_name="attention-training-data-vecs")
-            self.sendLogMessage.emit("Saved attention data.", "green")
-            self.increaseProgressBar.emit(5)
+        # --- Pos encode the training data ---
+        if not todo_list[2]:
+            # Load the training data and word2vec model
+            if train_data == None:
+                with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
+                    train_data = json.load(file)
+            if word2vec_model == None:
+                with open(f'{os.getcwd()}/ProcessedData/word2vec-model', 'r') as file:
+                    word2vec_model = Word2Vec.load(file)
+            self.getPosEncodings(word2vec_model, train_data, max_seq_len=100)
+            # Delete the TODO list
+            os.remove(f'{os.getcwd()}/ProcessedData/todo.json')
+            
+        self.sendLogMessage.emit("Done!", "green")
