@@ -24,61 +24,6 @@ class ProcessTrainingData(QThread):
         self.num_documents_to_load = num_documents_to_load
         self.epochs = epochs
 
-    def saveDataChunks(self, arr: list, chunk_size: int, file_name: str, type: str) -> None:
-        """
-        Saves the data in chunks to the ProcessedData folder.
-
-        Parameters:\n
-            arr (list): The array to save.
-            chunk_size (int): The size of each chunk.
-            file_name (str): The name of the file to save.
-            type (str): The type of the array. Either 'json' or 'numpy'.
-
-        Returns:\n
-            None
-        """
-        num_files = len(arr) // chunk_size + 1
-        if type == "json":
-            for i in range(0, num_files):
-                chunk = arr[chunk_size*i:chunk_size*(i+1)]
-                with open(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.json', 'w') as file:
-                    json.dump(chunk, file)
-        elif type == "numpy":
-            for i in range(0, num_files):
-                chunk = arr[chunk_size*i:chunk_size*(i+1)]
-                training_data = {}
-                for j in range(0, len(chunk)):
-                    training_data[f'sentence{j}'] = chunk[j]
-                np.savez(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.npz', **training_data)
-        else:
-            raise Exception("Invalid type. Must be either 'json' or 'numpy'.")
-            
-    def loadDataChunks(self, file_name: str, i: int) -> list:
-        """
-        Loads data in chunks from the ProcessedData folder.
-
-        Parameters:\n
-            file_name (str): The name of the files to load.
-
-        Returns:\n
-            list: The loaded data.
-        """
-        num_files = len([name for name in os.listdir(f'{os.getcwd()}/ProcessedData') if name.startswith(file_name)])
-        arr = []
-        if os.path.exists(f'{os.getcwd()}/ProcessedData/{file_name}-0.json'):
-            for i in range(0, num_files):
-                with open(f'{os.getcwd()}/ProcessedData/{file_name}-{i}.json', 'r') as file:
-                    chunk = json.load(file)
-                    arr.extend(chunk)
-        elif os.path.exists(f'{os.getcwd()}/ProcessedData/{file_name}-0.npz'):
-            if i < 10000:
-                chunk = np.load(f'{os.getcwd()}/ProcessedData/{file_name}-{0}.npz')
-                sentence = chunk[f'sentence{i}']
-        else:
-            raise Exception("File does not exist.")
-        
-        return sentence
-
     def loadTrainingData(self, training_folder: str, num_documents_to_load: int = 0, load_dump: bool = True, check_spelling: bool = False) -> list:
         """
         Loads the training data from the training folder and preprocesses it.
@@ -89,7 +34,7 @@ class ProcessTrainingData(QThread):
             load_dump (bool): Whether to load the story dump or not.
             check_spelling (bool): Whether to check the spelling of the sentences and only keep correctly spelled, English sentences or not.
         
-        Returns:\n
+        Returns and Saves:\n
             list: A list of all the cleaned sentences from the training data.
             -> [["Hello","world"],["This","is","the","second","sentence"]]
         """
@@ -269,7 +214,7 @@ class ProcessTrainingData(QThread):
             train_data (list): The training data to use to train the model.
             epochs (int): The number of epochs to train the model for.
             
-        Returns:\n
+        Returns and Saves:\n
             model (Word2Vec): The trained Word2Vec model.
         """
         # Create the word2vec model
@@ -322,7 +267,10 @@ class ProcessTrainingData(QThread):
             max_seq_len (int): The maximum length of a sentence in the training data. Default is 100.
 
         Returns:\n
-            pos_encoded_train_data (list): The training data with the positional encodings added to each word embedding.
+            None
+            
+        Saves:\n
+            pos_encoded_train_data (list): The training data with the positional encodings added to each word embedding (in chunks).
             -> [[np.array,np.array,np.array],[np.array,np.array]]
         """
         self.sendLogMessage.emit("Generating positional encodings...", "yellow")
@@ -337,6 +285,7 @@ class ProcessTrainingData(QThread):
                     pos_encodings[pos, j] = np.cos(pos / (10000 ** ((2*j - 1) / embedding_size)))
 
         # Add the positional encodings to each sentence array
+        batch = 0
         pos_encoded_train_data = []
         num_sentences = len(train_data)
         pr = 40 / (num_sentences/1000)
@@ -363,13 +312,24 @@ class ProcessTrainingData(QThread):
             pos_encoded_sentence = np.array(sentence_embeddings[:sentence_length])
             pos_encoded_train_data.append(pos_encoded_sentence)
             
-        # Save the pos-encoded training data
-        self.sendLogMessage.emit("Saving pos encoded training data vectors...", "yellow")
-        self.saveDataChunks(pos_encoded_train_data, chunk_size=100000, type="numpy", file_name="pos-encoded-training-data")
-        self.sendLogMessage.emit(f"Saved pos encoded training data vectors.", "green")
+            # Save the current chunk of pos-encoded training data
+            if len(pos_encoded_train_data) % 100000 == 0:
+                self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences+1//100000+1} of pos encoded training data vectors...", "yellow")
+                batch += 1
+                training_data = {}
+                for i in range(100000):
+                    training_data[f'sentence{i}'] = pos_encoded_train_data[i]
+                np.savez(f'{os.getcwd()}/ProcessedData/pos-encoded-training-data-{batch}.npz', **training_data)
+                pos_encoded_train_data = []
+
+        # Save the last chunk of pos-encoded training data
+        self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences//100000+1} of pos encoded training data vectors...", "yellow")
+        training_data = {}
+        for i in range(len(pos_encoded_train_data)):
+            training_data[f'sentence{i}'] = pos_encoded_train_data[i]
+        np.savez(f'{os.getcwd()}/ProcessedData/pos-encoded-training-data-{batch}.npz', **training_data)
+        self.sendLogMessage.emit(f"Sucessfully saved all the pos encoded training data vectors.", "green")
         self.increaseProgressBar.emit(5)
-        
-        return pos_encoded_train_data
 
     def run(self) -> None:
         """
