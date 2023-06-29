@@ -357,7 +357,10 @@ class ProcessTrainingData(QThread):
         if os.path.exists(f'{os.getcwd()}/ProcessedData/clean-training-data.json') and not os.path.exists(f'{os.getcwd()}/ProcessedData/todo.json'):
             overwrite = messagebox.askyesno("Confirmation", "Previous Training Data found. Do you want to overwrite it?")
             if overwrite == True:
-                os.removedirs(f'{os.getcwd()}/ProcessedData')
+                # Delete all the files in the ProcessedData folder
+                for file in os.listdir(f'{os.getcwd()}/ProcessedData'):
+                    os.remove(f'{os.getcwd()}/ProcessedData/{file}')
+                    print(f"Deleted {file}")
             else:
                 self.sendLogMessage.emit("Processing aborted.", "red")
                 return
