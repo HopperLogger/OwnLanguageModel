@@ -369,7 +369,7 @@ class MainWindow(QWidget):
         self.dark_mode_bt.setToolTip("Switches the theme.")
 
         # Create the stats
-        self.model_label = QLabel("Model: OLM V6.1.3")
+        self.model_label = QLabel("Model: OLM V0.6.2")
         self.model_label.setFont(self.small_font)
         self.model_label.setStyleSheet("color: #808080")
 
@@ -580,7 +580,7 @@ class MainWindow(QWidget):
 
         # Update the training data stats
         if part == "training-data" or part == "all":
-            if not os.path.exists(os.getcwd() + '/ProcessedData/training-data-0.json'):
+            if not os.path.exists(os.getcwd() + '/ProcessedData/clean-training-data.json'):
                 self.training_data_label.setText("Training Data: Not Available")
             else:
                 if not os.path.exists(os.getcwd() + '/ProcessedData/training-data-stats.json'):
