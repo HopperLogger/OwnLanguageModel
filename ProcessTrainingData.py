@@ -219,12 +219,12 @@ class ProcessTrainingData(QThread):
         """
         # Create the word2vec model
         start_time = time.time()
+        self.sendLogMessage.emit("Creating a new Word2Vec model...", "yellow")
         model = Word2Vec(sentences=train_data, vector_size=100, window=5, min_count=1, workers=8, epochs=1)
         elapsed_time = time.time() - start_time
         time_in_sec = int(elapsed_time)
         eta = round((((epochs - 1)*time_in_sec)/60),1)
-        self.sendLogMessage.emit("Created a new Word2Vec model.", "green")
-        self.sendLogMessage.emit(f"Step 1 --- Took {time_in_sec}s --- ETA {eta} min(s).", "blue")
+        self.sendLogMessage.emit(f"Step 1 --- Took {time_in_sec}s --- ETA: {eta} min(s).", "blue")
 
         # --- Check the folder ---
         if not os.path.exists(f'{os.getcwd()}/ProcessedData'):
@@ -251,7 +251,7 @@ class ProcessTrainingData(QThread):
             elapsed_time = time.time() - start_time
             time_in_sec = int(elapsed_time)
             eta = round((((epochs - epoch)*time_in_sec)/60),1)
-            self.sendLogMessage.emit(f"Step {trained_epochs} --- Took {time_in_sec}s --- ETA {eta} min(s).", "blue")
+            self.sendLogMessage.emit(f"Step {trained_epochs} --- Took {time_in_sec}s --- ETA: {eta} min(s).", "blue")
         self.sendLogMessage.emit("Word2Vec model sucessfully trained and saved.", "green")
         self.updateStats.emit("model")
 
@@ -401,7 +401,7 @@ class ProcessTrainingData(QThread):
         # Create the TODO list
         if not os.path.exists(f'{os.getcwd()}/ProcessedData/todo.json'):
             with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
-                json.dump([0,0,0], file)
+                json.dump([1,1,1], file)
                     
         # Open the TODO list
         with open(f'{os.getcwd()}/ProcessedData/todo.json', 'r') as file:
@@ -411,14 +411,14 @@ class ProcessTrainingData(QThread):
             
         # --- Main functions ---
         # --- Preprocess the training data ---
-        if not todo_list[0]:
+        if todo_list[0]:
             train_data = self.loadTrainingData(self.training_folder, self.num_documents_to_load, self.load_dump, self.check_spelling)
             # Save the current progress in the TODO list
             with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
-                json.dump([1,0,0], file)
+                json.dump([0,1,1], file)
 
         # --- Train the word2vec model ---
-        if not todo_list[1]:
+        if todo_list[1]:
             # Load the training data
             if train_data == None:
                 with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
@@ -427,10 +427,10 @@ class ProcessTrainingData(QThread):
             word2vec_model = self.createWord2VecModel(train_data, self.epochs)
             # Save the current progress in the TODO list
             with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
-                json.dump([1,1,0], file)
+                json.dump([0,0,1], file)
 
         # --- Pos encode the training data ---
-        if not todo_list[2]:
+        if todo_list[2]:
 
             # Load the training data and word2vec model
             if train_data == None:
