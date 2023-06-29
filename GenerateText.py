@@ -77,31 +77,33 @@ class GenerateText(QThread):
                         result_str += word + " "
 
                 # Add the punctuation back
-                result_str_array = result_str.split()
-                word_idx = 0
-                array_idx = 0
-                current_char_idx = 0
-                for word in result_str_array:
-                    if len(punctuation_idx) >= array_idx and word_idx == punctuation_idx[array_idx]:
-                        char_idx = current_char_idx + len(word)
-                        result_str = result_str[:char_idx] + punctuation_char[array_idx] + result_str[char_idx:]
-                        array_idx += 1
-                        current_char_idx += 1
-                    word_idx += 1
-                    current_char_idx += len(word) + 1
+                if len(punctuation_idx) > 0:
+                    result_str_array = result_str.split()
+                    word_idx = 0
+                    array_idx = 0
+                    current_char_idx = 0
+                    for word in result_str_array:
+                        if len(punctuation_idx) >= array_idx and word_idx == punctuation_idx[array_idx]:
+                            char_idx = current_char_idx + len(word)
+                            result_str = result_str[:char_idx] + punctuation_char[array_idx] + result_str[char_idx:]
+                            array_idx += 1
+                            current_char_idx += 1
+                        word_idx += 1
+                        current_char_idx += len(word) + 1
 
                 # Capitalize the words that were capitalized in the query
-                result_str_array = result_str.split()
-                word_idx = 0
-                array_idx = 0
-                current_char_idx = 0
-                for word in result_str_array:
-                    if len(capital_letters_idx) > array_idx and word_idx == capital_letters_idx[array_idx]:
-                        char = result_str[current_char_idx].capitalize()
-                        result_str = result_str[:current_char_idx] + char + result_str[current_char_idx+1:]
-                        array_idx +=1
-                    word_idx += 1
-                    current_char_idx += len(word) + 1
+                if len(capital_letters_idx) > 0:
+                    result_str_array = result_str.split()
+                    word_idx = 0
+                    array_idx = 0
+                    current_char_idx = 0
+                    for word in result_str_array:
+                        if len(capital_letters_idx) > array_idx and word_idx == capital_letters_idx[array_idx]:
+                            char = result_str[current_char_idx].capitalize()
+                            result_str = result_str[:current_char_idx] + char + result_str[current_char_idx+1:]
+                            array_idx +=1
+                        word_idx += 1
+                        current_char_idx += len(word) + 1
 
             else:
                 similar_words = model.wv.most_similar(query, topn=self.num_words)
