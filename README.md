@@ -12,7 +12,7 @@ Most importantly though, I find immense joy and fulfillment in this project. As 
 
 # Features
 - Dark/Light mode
-- Saves the training progress and allows to continue training at any time
+- Saves the pre-processing progress and allows to continue at any time
 - Choose a batch size to allow training on various memory sizes
 - Progress bar, descriptive logs and message boxes
 - Stats section that shows how many documents are loaded, and how much the model is trained
