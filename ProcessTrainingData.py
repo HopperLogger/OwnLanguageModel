@@ -257,14 +257,15 @@ class ProcessTrainingData(QThread):
 
         return model
 
-    def getPosEncodings(self, model: Word2Vec, train_data: list, max_seq_len: int = 100) -> list:
+    def getPosEncodings(self, train_data: list, model: Word2Vec, max_seq_len: int = 100, start_idx: int = 0) -> list:
         """
         Generates positional encodings for each word in the training data and adds them to the word embeddings.
 
         Parameters:\n
-            model (Word2Vec): The Word2Vec model that provides the word embeddings for each word in the train_data.
             train_data (list): The training data that will be used to generate the positional encodings.
+            model (Word2Vec): The Word2Vec model that provides the word embeddings for each word in the train_data.
             max_seq_len (int): The maximum length of a sentence in the training data. Default is 100.
+            start_idx (int): The index to start at in the training data. Default is 0.
 
         Returns:\n
             None
@@ -285,12 +286,13 @@ class ProcessTrainingData(QThread):
                     pos_encodings[pos, j] = np.cos(pos / (10000 ** ((2*j - 1) / embedding_size)))
 
         # Add the positional encodings to each sentence array
-        batch = 0
+        batch = start_idx
         pos_encoded_train_data = []
         num_sentences = len(train_data)
-        pr = 40 / (num_sentences/1000)
+        train_data = train_data[start_idx*100000:]
+        pr = 40 / (len(train_data)/1000)
         for sentence in train_data:
-            current_sentence_idx = train_data.index(sentence)+1
+            current_sentence_idx = train_data.index(sentence)+1+start_idx*100000
             print(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}")
             if (current_sentence_idx % 1000 == 0):
                 self.increaseProgressBar.emit(pr)
@@ -315,12 +317,12 @@ class ProcessTrainingData(QThread):
             # Save the current chunk of pos-encoded training data
             if len(pos_encoded_train_data) % 100000 == 0:
                 self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences+1//100000+1} of pos encoded training data vectors...", "yellow")
-                batch += 1
                 training_data = {}
                 for i in range(100000):
                     training_data[f'sentence{i}'] = pos_encoded_train_data[i]
                 np.savez(f'{os.getcwd()}/ProcessedData/pos-encoded-training-data-{batch}.npz', **training_data)
                 pos_encoded_train_data = []
+                batch += 1
 
         # Save the last chunk of pos-encoded training data
         self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences//100000+1} of pos encoded training data vectors...", "yellow")
@@ -351,14 +353,18 @@ class ProcessTrainingData(QThread):
             self.sendLogMessage.emit("No training folder selected. Please select a training folder.", "red")
             return
 
+        # Check if previous training data exists
+        if os.path.exists(f'{os.getcwd()}/ProcessedData/clean-training-data.json') and not os.path.exists(f'{os.getcwd()}/ProcessedData/todo.json'):
+            overwrite = messagebox.askyesno("Confirmation", "Previous Training Data found. Do you want to overwrite it?")
+            if overwrite == True:
+                os.removedirs(f'{os.getcwd()}/ProcessedData')
+            else:
+                self.sendLogMessage.emit("Processing aborted.", "red")
+                return
+
         # Check if the ProcessedData folder exists
         if not os.path.exists(f'{os.getcwd()}/ProcessedData'):
             os.makedirs(f'{os.getcwd()}/ProcessedData')
-
-        # Check if previous training data exists
-        if os.path.exists(f'{os.getcwd()}/ProcessedData/training-data-0') and not messagebox.askyesno("Confirmation", "Previous Training Data found. Do you want to overwrite it?"):
-            self.sendLogMessage.emit("Processing aborted.", "red")
-            return
 
         # Check if the training folder contains documents
         num_documents = 0
@@ -422,15 +428,26 @@ class ProcessTrainingData(QThread):
 
         # --- Pos encode the training data ---
         if not todo_list[2]:
+
             # Load the training data and word2vec model
             if train_data == None:
                 with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
                     train_data = json.load(file)
                 self.increaseProgressBar.emit(30)
+                
             if word2vec_model == None:
                 word2vec_model = Word2Vec.load(f'{os.getcwd()}/ProcessedData/word2vec-model')
                 self.increaseProgressBar.emit(30)
-            self.getPosEncodings(word2vec_model, train_data, max_seq_len=100)
+                
+            # Check if there are already pos encoded training data chunks
+            start_idx = 0
+            files = os.listdir(f'{os.getcwd()}/ProcessedData')
+            for file in files:
+                if file.startswith('pos-encoded-training-data'):
+                    start_idx += 1
+                        
+            self.getPosEncodings(train_data, word2vec_model, max_seq_len=100, start_idx=start_idx)
+            
             # Delete the TODO list
             os.remove(f'{os.getcwd()}/ProcessedData/todo.json')
             
