@@ -275,15 +275,16 @@ class ProcessTrainingData(QThread):
             -> [[np.array,np.array,np.array],[np.array,np.array]]
         """
         self.sendLogMessage.emit("Generating positional encodings...", "yellow")
-        # Generate positional encodings for each position in the sequence
+        
         embedding_size = model.vector_size
-        pos_encodings = np.zeros((max_seq_len, embedding_size)) # Create a 100x100 matrix
-        for pos in range(max_seq_len): # For each position in the sequence
-            for j in range(embedding_size):
-                if j % 2 == 0:
-                    pos_encodings[pos, j] = np.sin(pos / (10000 ** (2*j / embedding_size)))
-                else:
-                    pos_encodings[pos, j] = np.cos(pos / (10000 ** ((2*j - 1) / embedding_size)))
+        
+        # Generate positional encodings for each position in the sequence
+        pos_encodings = np.zeros((max_seq_len, embedding_size))
+        positions = np.arange(max_seq_len)[:, np.newaxis]
+        div_term = np.exp(np.arange(0, embedding_size, 2) * -(np.log(10000.0) / embedding_size))
+
+        pos_encodings[:, 0::2] = np.sin(positions * div_term)
+        pos_encodings[:, 1::2] = np.cos(positions * div_term)
 
         # Add the positional encodings to each sentence array
         batch = start_idx
@@ -291,19 +292,20 @@ class ProcessTrainingData(QThread):
         num_sentences = len(train_data)
         train_data = train_data[start_idx*100000:]
         pr = 40 / (len(train_data)/1000)
-        for sentence in train_data:
-            current_sentence_idx = train_data.index(sentence)+1+start_idx*100000
-            print(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}")
-            if (current_sentence_idx % 1000 == 0):
+        offset = 1+start_idx*100000
+        for i, sentence in enumerate(train_data):
+            current_sentence_idx = i + offset
+            if (current_sentence_idx % 10000 == 0):
                 self.increaseProgressBar.emit(pr)
-                self.sendLogMessage.emit(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}", "blue")
+                self.sendLogMessage.emit(f"Generating positional encodings for sentence {'{:,}'.format(current_sentence_idx)}/{'{:,}'.format(num_sentences)}", "blue")
+            
             sentence_embeddings = []
             for i, word in enumerate(sentence):
-                # Get the word vector before positional encoding
-                word_vec = model.wv.get_vector(word)
                 # Cap the length of the sentence to max_seq_len
                 if i >= max_seq_len:
                     break
+                # Get the word vector before positional encoding
+                word_vec = model.wv.get_vector(word)
                 # Add the positional encoding vector to the word vector
                 word_vec_pos_encoded = word_vec + pos_encodings[i, :]
                 # Add the pos-encoded word vector to the sentence_embeddings list
@@ -316,7 +318,7 @@ class ProcessTrainingData(QThread):
             
             # Save the current chunk of pos-encoded training data
             if len(pos_encoded_train_data) % 100000 == 0:
-                self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences+1//100000+1} of pos encoded training data vectors...", "yellow")
+                self.sendLogMessage.emit(f"Saving batch {batch+1}/{num_sentences//100000+1} of pos encoded training data vectors...", "yellow")
                 training_data = {}
                 for i in range(100000):
                     training_data[f'sentence{i}'] = pos_encoded_train_data[i]
