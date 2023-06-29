@@ -161,7 +161,7 @@ class ProcessTrainingData(QThread):
             """
             tokenized_documents = []
             num_documents = len(documents)
-            pr = 5 / num_documents # Calculate the progress bar increase per document
+            pr = 15 / num_documents # Calculate the progress bar increase per document
             for document in documents:
                 sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', document) # Split the document into sentences
                 tokenized_sentences = []
@@ -339,12 +339,13 @@ class ProcessTrainingData(QThread):
         # Add the positional encodings to each sentence array
         pos_encoded_train_data = []
         num_sentences = len(train_data)
-        pr = 40 / num_sentences
+        pr = 40 / (num_sentences/1000)
         for sentence in train_data:
             current_sentence_idx = train_data.index(sentence)+1
             print(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}")
-            if (current_sentence_idx % 100 == 0):
-                self.increaseProgressBar.emit(pr*100)
+            if (current_sentence_idx % 1000 == 0):
+                self.increaseProgressBar.emit(pr)
+                self.sendLogMessage.emit(f"Generating positional encodings for sentence {current_sentence_idx}/{num_sentences}", "blue")
             sentence_embeddings = []
             for i, word in enumerate(sentence):
                 # Get the word vector before positional encoding
@@ -366,6 +367,7 @@ class ProcessTrainingData(QThread):
         self.sendLogMessage.emit("Saving pos encoded training data vectors...", "yellow")
         self.saveDataChunks(pos_encoded_train_data, chunk_size=100000, type="numpy", file_name="pos-encoded-training-data")
         self.sendLogMessage.emit(f"Saved pos encoded training data vectors.", "green")
+        self.increaseProgressBar.emit(5)
         
         return pos_encoded_train_data
 
@@ -435,6 +437,8 @@ class ProcessTrainingData(QThread):
         # Open the TODO list
         with open(f'{os.getcwd()}/ProcessedData/todo.json', 'r') as file:
             todo_list = json.load(file)
+        train_data = None
+        word2vec_model = None
             
         # --- Main functions ---
         # --- Preprocess the training data ---
@@ -450,6 +454,7 @@ class ProcessTrainingData(QThread):
             if train_data == None:
                 with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
                     train_data = json.load(file)
+                self.increaseProgressBar.emit(30)
             word2vec_model = self.createWord2VecModel(train_data, self.epochs)
             # Save the current progress in the TODO list
             with open(f'{os.getcwd()}/ProcessedData/todo.json', 'w') as file:
@@ -461,9 +466,10 @@ class ProcessTrainingData(QThread):
             if train_data == None:
                 with open(f'{os.getcwd()}/ProcessedData/clean-training-data.json', 'r') as file:
                     train_data = json.load(file)
+                self.increaseProgressBar.emit(30)
             if word2vec_model == None:
-                with open(f'{os.getcwd()}/ProcessedData/word2vec-model', 'r') as file:
-                    word2vec_model = Word2Vec.load(file)
+                word2vec_model = Word2Vec.load(f'{os.getcwd()}/ProcessedData/word2vec-model')
+                self.increaseProgressBar.emit(30)
             self.getPosEncodings(word2vec_model, train_data, max_seq_len=100)
             # Delete the TODO list
             os.remove(f'{os.getcwd()}/ProcessedData/todo.json')
